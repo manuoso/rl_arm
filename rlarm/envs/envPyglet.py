@@ -2,6 +2,7 @@ import numpy as np
 import pyglet
 
 
+####################################################################################################
 class ArmEnv(object):
     def __init__(self, dt = 0.1, action_bound = [-1, 1], goal = {'x': 150., 'y': 150., 'l': 20} ):
         self.viewer = None
@@ -52,15 +53,14 @@ class ArmEnv(object):
             
         dist1, dist2, a1xy_, a2xy_ = self._pose()
         
-        r = -np.sqrt(dist2[0]**2+dist2[1]**2)
+        r = -np.sqrt(dist2[0]**2 + dist2[1]**2)
 
         # done and reward
-        if self.goal['x'] - self.goal['l']/2 < a2xy_[0] < self.goal['x'] + self.goal['l']/2:
-            if self.goal['y'] - self.goal['l']/2 < a2xy_[1] < self.goal['y'] + self.goal['l']/2:
-                r += 1.
-                self.on_goal += 1
-                if self.on_goal > 50:
-                    done = True
+        if (self.goal['x'] - self.goal['l']/2 < a2xy_[0] < self.goal['x'] + self.goal['l']/2) and (self.goal['y'] - self.goal['l']/2 < a2xy_[1] < self.goal['y'] + self.goal['l']/2):
+            r += 1.
+            self.on_goal += 1
+            if self.on_goal > 50:
+                done = True
         else:
             self.on_goal = 0
 
