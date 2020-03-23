@@ -55,7 +55,7 @@ class DDPG(Policy_Base):
     class TrainConfig():
         def __init__(self):
             self.use_prioritized_rb = True
-            self.max_steps = 100000
+            self.max_epochs = 1000
             self.episode_max_steps = 1000
             self.n_warmup = 10000
             self.update_interval = 1
@@ -157,12 +157,12 @@ class DDPG(Policy_Base):
         total_steps = 0
         episode_steps = 0
         episode_return = 0
+        n_epochs = 0
         
         reward_history = []
         reward_averaged = []
         
         episode_start_time = time.time()
-        n_episode = 0
 
         replay_buffer = get_replay_buffer(obs_shape = self.state_dim, 
                                           act_shape = self.act_dim, 
@@ -172,9 +172,9 @@ class DDPG(Policy_Base):
 
         obs = self.reset()
 
-        while total_steps < config.max_steps:
+        while n_epochs < config.max_epochs:
             
-            if total_steps < config.n_warmup:
+            if n_epochs < config.n_warmup:
                 action = self.get_sample()                 
             else:
                 action = self.act(obs)
@@ -195,11 +195,11 @@ class DDPG(Policy_Base):
             if done or episode_steps == config.episode_max_steps:
                 obs = self.reset()        
 
-                n_episode += 1
+                n_epochs += 1
                 fps = episode_steps / (time.time() - episode_start_time)
                 
                 print(colorize("[episodes: {} / steps: {} / episode_steps: {}], return: {:.4f}, FPS: {:5.2f}".format(
-                        n_episode, total_steps, episode_steps,
+                        n_epochs, total_steps, episode_steps,
                         episode_return, fps),
                         "blue"))
                 
@@ -216,7 +216,7 @@ class DDPG(Policy_Base):
                 episode_return = 0
                 episode_start_time = time.time()
 
-            if total_steps >= config.n_warmup and total_steps % config.update_interval == 0:
+            if n_epochs >= config.n_warmup and total_steps % config.update_interval == 0:
                 samples = replay_buffer.sample(self.batch_size)       
                          
                 td_error, actor_loss, critic_loss = self.fit_net(samples)

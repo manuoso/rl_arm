@@ -12,7 +12,7 @@ from rlarm.algorithms.bi_res_ddpg.bi_res_ddpg import BI_RES_DDPG
 ####################################################################################################
 if __name__ == '__main__':
     # Variables for Debug
-    save_file_train_params = False
+    save_file_train_params = True
     deterministic = True
     save_tensorboard = True
     save_matplotlib = True
@@ -38,11 +38,11 @@ if __name__ == '__main__':
     # Create Policy
     policy = DDPG(name = name, env = env, 
                   deterministic = deterministic, save_tensorboard = save_tensorboard, save_matplotlib = save_matplotlib, 
-                  lr_actor = 0.0001, lr_critic = 0.001, max_action = 1., gamma = 0.9, actor_layers = [400, 300], critic_layers = [400, 300])
+                  lr_actor = 0.001, lr_critic = 0.001, max_action = 1., gamma = 0.9, actor_layers = [400, 300], critic_layers = [400, 300])
     
     train_params = policy.TrainConfig()    
     train_params.use_prioritized_rb = False
-    train_params.max_steps = 1500
+    train_params.max_epochs = 1500
     train_params.episode_max_steps = 200
     train_params.n_warmup = 300
     train_params.update_interval = 1
@@ -60,7 +60,7 @@ if __name__ == '__main__':
     
     # train_params = policy.TrainConfig()    
     # train_params.use_prioritized_rb = True
-    # train_params.max_steps = 1500
+    # train_params.max_epochs = 1500
     # train_params.episode_max_steps = 200
     # train_params.n_warmup = 300
     # train_params.update_interval = 1
