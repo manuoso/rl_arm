@@ -1,20 +1,52 @@
 %% POSITRON KINEMATICS ANALYSIS
 % Using Peter Corke Toolbox
 
-clc; clear all;
+clc ; clear all;
 
 L1 = 10.0;
-L2 = 200.0;
-L3 = 200.0;
+L2 = 100.0;
+L3 = 100.0;
 
-L(1)= Link([0 L1 0 pi/2]);
-L(2)= Link([0 0 L2 0]);
-L(3)= Link([0 0 L3 0]);
+% 3 DOF RRR
+L(1)= Link([  0      L1    0    pi/2 ]);
+L(2)= Link([  0      0     L2     0  ]);
+L(3)= Link([  0      0     L3     0  ]);
+
+% 2 DOF RR SAME PLANE
+% L(1)= Link([  0      0     L2     0  ]);
+% L(2)= Link([  0      0     L3     0  ]);
+
+% 2 DOF RR DIFFERENT PLANE
+% L(1)= Link([  0      L1    0    pi/2 ]);
+% L(2)= Link([  0      0     L2     0  ]);
 
 % set limits for joints
-% L(1).qlim = [deg2rad(-150) deg2rad(150)];
-% L(2).qlim = [deg2rad(-90) deg2rad(90)];
-% L(3).qlim = [deg2rad(-120) deg2rad(120)];
+%L(2).qlim=[deg2rad(-90) deg2rad(90)];
+%L(3).qlim=[deg2rad(-90) deg2rad(90)];
+%L(4).qlim=[deg2rad(-90) deg2rad(90)];
+
+%% Symbolic definition to obtain T matrix
+% syms L_1 L_2 L_3 q1 q2 q3 real
+% pi1=sym('pi');
+
+% Matriz DH para Robotics Toolbox
+% 3 DOF RRR
+% Lsym(1)= Link([  0      L_1    0    pi/2 ]);
+% Lsym(2)= Link([  0      0     L_2     0  ]);
+% Lsym(3)= Link([  0      0     L_3     0  ]);
+
+% 2 DOF RR SAME PLANE
+% Lsym(1)= Link([  0      0     L_2     0  ]);
+% Lsym(2)= Link([  0      0     L_3     0  ]);
+
+% 2 DOF RR DIFFERENT PLANE
+% Lsym(1)= Link([  0      L_1    0    pi/2 ]);
+% Lsym(2)= Link([  0      0     L_2     0  ]);
+
+% Se unen las articulaciones
+% robotSym = SerialLink(Lsym);
+
+% Tsim = simplify( robotSym.fkine( [q1 q2 q3] ) )
 
 robot = SerialLink(L);
 robot.name = 'hecatonquiros';
@@ -45,9 +77,9 @@ assume(var,'real')
 
 % generate a grid of theta1 and theta2,3,4 values
 
-th1 = (-150:5:150);
+th1 = (-90:5:90);
 th2 = (-90:5:90);
-th3 = (-120:5:120);
+th3 = (-90:5:90);
 
 q = {th1*pi/180,th2*pi/180,th3*pi/180};
 
@@ -66,6 +98,15 @@ Y = Y(Q{:});
 z(var(:)) = Pos(3);
 Z = matlabFunction(z);
 Z = Z(Q{:});
+
+x_min = min(X(:))
+x_max = max(X(:))
+
+y_min = min(Y(:))
+y_max = max(Y(:))
+
+z_min = min(Z(:))
+z_max = max(Z(:))
 
 plot3(X(:),Y(:),Z(:),'b.')
 xlabel('X')
