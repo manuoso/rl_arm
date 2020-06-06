@@ -19,6 +19,9 @@ class ArmEnv(object):
         
         self.center_coord = np.array([400, 400])
         
+    def name(self):
+        return "PygletArm2D"
+        
     def _pose(self):
         (a1l, a2l) = self.arm_info['l']  # mm, arm length
         (a1r, a2r) = self.arm_info['r']  # radian, angle
@@ -175,9 +178,11 @@ class Viewer(pyglet.window.Window):
 
 if __name__ == '__main__':
     env = ArmEnv()
+    if env.name() == "PygletArm2D":
+        print("Is PygletArm2D")
     env.render()    # Need two render before begin
     env.render()
+    env.reset()
     while True:
         env.render()
-        # env.reset()
         env.step(env.sample_action())

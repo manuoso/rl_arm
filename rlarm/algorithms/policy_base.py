@@ -7,7 +7,9 @@ from gym.utils import colorize
 
 from rlarm.algorithms.tools.utils import REPO_ROOT
     
-    
+class TypeExcept(Exception):
+    pass
+
 ####################################################################################################
 class Policy_Base():
     def __init__(self, name, env, deterministic, save_tensorboard, save_matplotlib):
@@ -19,13 +21,24 @@ class Policy_Base():
         if deterministic:
             np.random.seed(1)
             tf.random.set_seed(1)
+        
+        if self.env.name() == "PygletArm2D":
+            self.act_dim = 2
+            self.state_dim = (9,)
+
+            print(colorize("State dim: {}".format(self.state_dim), "yellow"))
+            print(colorize("Act dim: {}".format(self.act_dim), "yellow"))
             
-        self.act_dim = 2
-        self.state_dim = (9,)
+        elif self.env.name() == 'ArmiPy':
+            self.act_dim = 3
+            self.state_dim = (13,)
 
-        print(colorize("State dim: {}".format(self.state_dim), "yellow"))
-        print(colorize("Act dim: {}".format(self.act_dim), "yellow"))
-
+            print(colorize("State dim: {}".format(self.state_dim), "yellow"))
+            print(colorize("Act dim: {}".format(self.act_dim), "yellow"))
+            
+        else:
+            raise TypeExcept("Unrecognized Env!")   
+            
         if self.save_tensorboard:
             os.makedirs(os.path.join(REPO_ROOT, 'tensorboard'), exist_ok = True)
             self.writer = tf.summary.create_file_writer(os.path.join(REPO_ROOT, 'tensorboard', self.name))
@@ -36,17 +49,101 @@ class Policy_Base():
 
     # ----------------------------------------------------------------------------------------------------
     def reset(self):
-        return self.env.reset()
+        if self.env.name() == "PygletArm2D":
+            ob = self.env.reset()
+            
+        elif self.env.name() == 'ArmiPy':
+            rec = self.env.reset()
+            
+            ob_rec = []
+            ob_rec.append(rec["a1X"])
+            ob_rec.append(rec["a1Y"])
+            ob_rec.append(rec["a1Z"])
+            
+            ob_rec.append(rec["a2X"])
+            ob_rec.append(rec["a2Y"])
+            ob_rec.append(rec["a2Z"])
+            
+            ob_rec.append(rec["dist1X"])
+            ob_rec.append(rec["dist1Y"])
+            ob_rec.append(rec["dist1Z"])
+            
+            ob_rec.append(rec["dist2X"])
+            ob_rec.append(rec["dist2Y"])
+            ob_rec.append(rec["dist2Z"])      
+            
+            on_goal = rec["on_goal"]
+            ob_rec.append([1. if on_goal else 0.])
+            
+            ob = np.array(ob_rec)  
+            
+        else:
+            raise TypeExcept("Unrecognized Env!")   
+        
+        return ob
 
     # ----------------------------------------------------------------------------------------------------
     def step(self, action):
-        ob_next, r, done = self.env.step(action)
-        self.env.render()
+        if self.env.name() == "PygletArm2D":
+            ob_next, r, done = self.env.step(action)
+            self.env.render()
+            
+        elif self.env.name() == 'ArmiPy':
+            converted_act = {
+                             "armJoint0": float(action[0]),
+                             "armJoint1": float(action[1]),
+                             "armJoint2": float(action[2]),
+                             }
+   
+            rec = self.env.step(converted_act)
+            
+            ob_rec = []
+            ob_rec.append(rec["a1X"])
+            ob_rec.append(rec["a1Y"])
+            ob_rec.append(rec["a1Z"])
+            
+            ob_rec.append(rec["a2X"])
+            ob_rec.append(rec["a2Y"])
+            ob_rec.append(rec["a2Z"])
+            
+            ob_rec.append(rec["dist1X"])
+            ob_rec.append(rec["dist1Y"])
+            ob_rec.append(rec["dist1Z"])
+            
+            ob_rec.append(rec["dist2X"])
+            ob_rec.append(rec["dist2Y"])
+            ob_rec.append(rec["dist2Z"])   
+            
+            on_goal = rec["on_goal"]
+            ob_rec.append([1. if on_goal else 0.])
+            
+            ob_next = np.array(ob_rec)
+            r = rec["reward"]
+            done = rec["done"]   
+             
+        else:
+            raise TypeExcept("Unrecognized Env!")   
+        
         return ob_next, r, done
 
     # ----------------------------------------------------------------------------------------------------
     def get_sample(self):
-        return self.env.sample_action()
+        if self.env.name() == "PygletArm2D":
+            acts = self.env.sample_action()
+            
+        elif self.env.name() == 'ArmiPy':
+            random_acts = []        
+            rec = self.env.sample()
+            
+            random_acts.append(rec["armJoint0"])
+            random_acts.append(rec["armJoint1"])
+            random_acts.append(rec["armJoint2"])  
+            acts = np.array(random_acts)
+            
+        else:
+            raise TypeExcept("Unrecognized Env!")   
+        
+        return acts
     
     # ----------------------------------------------------------------------------------------------------
     def act(self, state):

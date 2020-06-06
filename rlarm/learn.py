@@ -22,7 +22,7 @@ if __name__ == '__main__':
     alg_name = "DDPG"
     
     # Env name
-    env_name = "PygletArm"
+    env_name = "PygletArm2D"
     
     # Time name
     time_name = str(time.localtime().tm_hour)+'_'+str(time.localtime().tm_min)+'_'+str(time.localtime().tm_sec)
