@@ -4,6 +4,7 @@ import os
 from rlarm.algorithms.tools.utils import REPO_ROOT
 
 from rlarm.envs.envPyglet import ArmEnv
+import calvopy
 
 from rlarm.algorithms.ddpg.ddpg import DDPG
 from rlarm.algorithms.bi_res_ddpg.bi_res_ddpg import BI_RES_DDPG
@@ -12,7 +13,7 @@ from rlarm.algorithms.bi_res_ddpg.bi_res_ddpg import BI_RES_DDPG
 ####################################################################################################
 if __name__ == '__main__':
     # Variables for Debug
-    save_file_train_params = True
+    save_file_train_params = False
     deterministic = True
     save_tensorboard = True
     save_matplotlib = True
@@ -22,7 +23,8 @@ if __name__ == '__main__':
     alg_name = "DDPG"
     
     # Env name
-    env_name = "PygletArm2D"
+    # env_name = "PygletArm2D"
+    env_name = "ArmiPy"
     
     # Time name
     time_name = str(time.localtime().tm_hour)+'_'+str(time.localtime().tm_min)+'_'+str(time.localtime().tm_sec)
@@ -30,10 +32,13 @@ if __name__ == '__main__':
     name = alg_name + "-" + env_name + "-" + time_name
     
     ########## ENV CREATION ##########      
-    env = ArmEnv()
-    env.render()    # Need two render before begin
-    env.render()
+    # env = ArmEnv()
+    # env.render()    # Need two render before begin
+    # env.render()
     
+    env = calvopy.ArmiPy("Default")
+    env.init(0.1, True)
+ 
     ########## POLICY ##########
     # Create Policy
     policy = DDPG(name = name, env = env, 

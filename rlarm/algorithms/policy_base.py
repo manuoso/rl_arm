@@ -72,8 +72,8 @@ class Policy_Base():
             ob_rec.append(rec["dist2Y"])
             ob_rec.append(rec["dist2Z"])      
             
-            on_goal = rec["on_goal"]
-            ob_rec.append([1. if on_goal else 0.])
+            goal = 0.0
+            ob_rec.append(goal) 
             
             ob = np.array(ob_rec)  
             
@@ -114,8 +114,8 @@ class Policy_Base():
             ob_rec.append(rec["dist2Y"])
             ob_rec.append(rec["dist2Z"])   
             
-            on_goal = rec["on_goal"]
-            ob_rec.append([1. if on_goal else 0.])
+            goal = rec["on_goal"]
+            ob_rec.append(1. if goal else 0.)
             
             ob_next = np.array(ob_rec)
             r = rec["reward"]
