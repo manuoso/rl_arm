@@ -81,6 +81,41 @@ class Policy_Base():
             raise TypeExcept("Unrecognized Env!")   
         
         return ob
+    
+        # ----------------------------------------------------------------------------------------------------
+    def initialPose(self):
+        if self.env.name() == "PygletArm2D":
+            ob = self.env.reset()
+            
+        elif self.env.name() == 'ArmiPy':
+            rec = self.env.initialState()
+            
+            ob_rec = []
+            ob_rec.append(rec["a1X"])
+            ob_rec.append(rec["a1Y"])
+            ob_rec.append(rec["a1Z"])
+            
+            ob_rec.append(rec["a2X"])
+            ob_rec.append(rec["a2Y"])
+            ob_rec.append(rec["a2Z"])
+            
+            ob_rec.append(rec["dist1X"])
+            ob_rec.append(rec["dist1Y"])
+            ob_rec.append(rec["dist1Z"])
+            
+            ob_rec.append(rec["dist2X"])
+            ob_rec.append(rec["dist2Y"])
+            ob_rec.append(rec["dist2Z"])      
+            
+            goal = 0.0
+            ob_rec.append(goal) 
+            
+            ob = np.array(ob_rec)  
+            
+        else:
+            raise TypeExcept("Unrecognized Env!")   
+        
+        return ob
 
     # ----------------------------------------------------------------------------------------------------
     def step(self, action):
@@ -155,4 +190,16 @@ class Policy_Base():
 
     # ----------------------------------------------------------------------------------------------------
     def train(self, config: TrainConfig):
+        pass
+    
+    # ----------------------------------------------------------------------------------------------------
+    def set_check_point(self, policy_dir):
+        pass
+    
+    # ----------------------------------------------------------------------------------------------------
+    def load(self):
+        pass
+    
+    # ----------------------------------------------------------------------------------------------------
+    def evaluate(self, saved_model, episode_max_steps):
         pass

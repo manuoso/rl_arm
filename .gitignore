@@ -133,3 +133,11 @@ dmypy.json
 *.v2
 
 *.txt
+
+checkpoints/
+
+figs/
+
+tensorboard/
+
+train_params/

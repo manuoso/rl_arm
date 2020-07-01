@@ -13,7 +13,7 @@ from rlarm.algorithms.bi_res_ddpg.bi_res_ddpg import BI_RES_DDPG
 ####################################################################################################
 if __name__ == '__main__':
     # Variables for Debug
-    save_file_train_params = False
+    save_file_train_params = True
     deterministic = True
     save_tensorboard = True
     save_matplotlib = True
@@ -58,6 +58,8 @@ if __name__ == '__main__':
     train_params.batch_size = 32
     train_params.sigma = 0.1
     train_params.tau = 0.01
+    
+    train_params.save_model_interval = 10000 # save checkpoints every X steps
     
     # policy = BI_RES_DDPG(name = name, env = env,
     #                      deterministic = deterministic, save_tensorboard = save_tensorboard, save_matplotlib = save_matplotlib, 

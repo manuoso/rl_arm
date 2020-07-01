@@ -5,7 +5,7 @@ import tensorflow as tf
 
 from gym.utils import colorize
 
-from rlarm.algorithms.policy_base import Policy_Base
+from rlarm.algorithms.policy_base import Policy_Base, TypeExcept
 
 from rlarm.algorithms.ddpg.networks import ACTOR_DDPG, CRITIC_DDPG
 from rlarm.algorithms.tools.huber_loss import huber_loss
@@ -49,8 +49,23 @@ class DDPG(Policy_Base):
                 
         self.max_grad = 10.
         self.actor_optim = tf.keras.optimizers.Adam(learning_rate = lr_actor)
-        self.critic_optim = tf.keras.optimizers.Adam(learning_rate = lr_critic)                
-
+        self.critic_optim = tf.keras.optimizers.Adam(learning_rate = lr_critic)      
+        
+        policy_dir = os.path.join(REPO_ROOT, 'checkpoints', self.name)
+        
+        self._dir_actor = os.path.join(policy_dir, 'actor')
+        self._dir_actor_target = os.path.join(policy_dir, 'actor_target')
+        self._dir_critic = os.path.join(policy_dir, 'critic')
+        self._dir_critic_target = os.path.join(policy_dir, 'critic_target')
+        
+        os.makedirs(os.path.join(REPO_ROOT, 'checkpoints'), exist_ok = True)
+        os.makedirs(policy_dir, exist_ok = True)
+        
+        os.makedirs(self._dir_actor, exist_ok = True)
+        os.makedirs(self._dir_actor_target, exist_ok = True)
+        os.makedirs(self._dir_critic, exist_ok = True)
+        os.makedirs(self._dir_critic_target, exist_ok = True)
+                
     # ----------------------------------------------------------------------------------------------------
     class TrainConfig():
         def __init__(self):
@@ -154,6 +169,9 @@ class DDPG(Policy_Base):
         self.batch_size = config.batch_size
         self.use_prioritized_rb = config.use_prioritized_rb
         
+        self.save_model_interval = config.save_model_interval
+        self.set_check_point()
+        
         total_steps = 0
         episode_steps = 0
         episode_return = 0
@@ -243,6 +261,13 @@ class DDPG(Policy_Base):
                 #             tf.summary.scalar("average_test_return", avg_test_return, step=total_steps)
 
                 #         self.writer.flush()
+                
+            if total_steps % self.save_model_interval == 0:
+                self.checkpoint_manager_actor.save()
+                self.checkpoint_manager_actor_target.save()
+                
+                self.checkpoint_manager_critic.save()
+                self.checkpoint_manager_critic_target.save()
         
         print(colorize("[FINAL] Num steps: {}, Max reward: {}, Average reward: {}".format(
             total_steps, np.max(reward_history), np.mean(reward_history)), "magenta"))
@@ -257,6 +282,70 @@ class DDPG(Policy_Base):
             }
             plot_learning_curve(self.name, data_dict, xlabel='episode')
 
+    # ----------------------------------------------------------------------------------------------------
+    def set_check_point(self):
+        self._checkpoint_actor = tf.train.Checkpoint(net=self.actor_network)
+        self._checkpoint_actor_target = tf.train.Checkpoint(net=self.actor_target_network)
+        
+        self._checkpoint_critic = tf.train.Checkpoint(net=self.critic_network)
+        self._checkpoint_critic_target = tf.train.Checkpoint(net=self.critic_target_network)
+
+        self.checkpoint_manager_actor = tf.train.CheckpointManager(
+            self._checkpoint_actor, directory=self._dir_actor, max_to_keep=5)
+        self.checkpoint_manager_actor_target = tf.train.CheckpointManager(
+            self._checkpoint_actor_target, directory=self._dir_actor_target, max_to_keep=5)
+        
+        self.checkpoint_manager_critic = tf.train.CheckpointManager(
+            self._checkpoint_critic, directory=self._dir_critic, max_to_keep=5)
+        self.checkpoint_manager_critic_target = tf.train.CheckpointManager(
+            self._checkpoint_critic_target, directory=self._dir_critic_target, max_to_keep=5)
+    
+    # ----------------------------------------------------------------------------------------------------
+    def load(self):
+        last_checkpoint_actor = tf.train.latest_checkpoint(self._dir_actor)        
+        last_checkpoint_actor_target = tf.train.latest_checkpoint(self._dir_actor_target)
+        
+        last_checkpoint_critic = tf.train.latest_checkpoint(self._dir_critic)
+        last_checkpoint_critic_target = tf.train.latest_checkpoint(self._dir_critic_target)
+
+        if last_checkpoint_actor is None or last_checkpoint_actor_target is None or last_checkpoint_critic is None or last_checkpoint_critic_target is None:
+            raise TypeExcept("No checkpoint found")   
+        else:
+            self._checkpoint_actor.restore(last_checkpoint_actor)
+            self._checkpoint_actor_target.restore(last_checkpoint_actor_target)
+            self._checkpoint_critic.restore(last_checkpoint_critic)
+            self._checkpoint_critic_target.restore(last_checkpoint_critic_target)
+    
+    # ----------------------------------------------------------------------------------------------------
+    def evaluate(self, saved_model, episode_max_steps):
+        # load ckpt 
+        self.load()
+        
+        # Configure env with a desired goal point
+        # TODO
+        
+        ep_done = False
+        step = 0
+        episode_return = 0.0
+        
+        # Initial state
+        obs = self.initialPose()
+        
+        while not ep_done:
+            action = self.act(obs)
+            # print("Action: ", action)
+            
+            next_obs, reward, done = self.step(action)
+            
+            step += 1
+            episode_return += reward
+            
+            obs = next_obs
+                
+            # Episode can finish either by reaching terminal state or max episode steps
+            if done or step == episode_max_steps:
+                ep_done = True  
+                
     # ----------------------------------------------------------------------------------------------------
     def _evaluate_policy(self, total_steps, test_episodes, episode_max_steps):        
         avg_test_return = 0.
