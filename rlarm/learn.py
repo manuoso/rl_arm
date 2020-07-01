@@ -13,7 +13,7 @@ from rlarm.algorithms.bi_res_ddpg.bi_res_ddpg import BI_RES_DDPG
 ####################################################################################################
 if __name__ == '__main__':
     # Variables for Debug
-    save_file_train_params = True
+    save_file_train_params = False
     deterministic = True
     save_tensorboard = True
     save_matplotlib = True
@@ -41,7 +41,7 @@ if __name__ == '__main__':
  
     ########## POLICY ##########
     # Create Policy
-    policy = DDPG(name = name, env = env, 
+    policy = DDPG(name = name, env = env, dir_checkpoints = "/home/aphrodite/programming/rl_arm/rlarm/checkpoints/DDPG-ArmiPy-13_25_9",
                   deterministic = deterministic, save_tensorboard = save_tensorboard, save_matplotlib = save_matplotlib, 
                   lr_actor = 0.001, lr_critic = 0.001, max_action = 1., gamma = 0.9, actor_layers = [400, 300], critic_layers = [400, 300])
     

@@ -20,7 +20,7 @@ tf.executing_eagerly()
 
 ####################################################################################################
 class DDPG(Policy_Base):
-    def __init__(self, name, env, deterministic = False, save_tensorboard = True, save_matplotlib = True, lr_actor = 0.0001, lr_critic = 0.001, max_action = 1., gamma = 0.99, actor_layers = [400, 300], critic_layers = [400, 300]):        
+    def __init__(self, name, env, dir_checkpoints, deterministic = False, save_tensorboard = True, save_matplotlib = True, lr_actor = 0.0001, lr_critic = 0.001, max_action = 1., gamma = 0.99, actor_layers = [400, 300], critic_layers = [400, 300]):        
         for gpu in tf.config.experimental.list_physical_devices('GPU'):
             tf.compat.v2.config.experimental.set_memory_growth(gpu, True)
             
@@ -51,20 +51,32 @@ class DDPG(Policy_Base):
         self.actor_optim = tf.keras.optimizers.Adam(learning_rate = lr_actor)
         self.critic_optim = tf.keras.optimizers.Adam(learning_rate = lr_critic)      
         
-        policy_dir = os.path.join(REPO_ROOT, 'checkpoints', self.name)
-        
-        self._dir_actor = os.path.join(policy_dir, 'actor')
-        self._dir_actor_target = os.path.join(policy_dir, 'actor_target')
-        self._dir_critic = os.path.join(policy_dir, 'critic')
-        self._dir_critic_target = os.path.join(policy_dir, 'critic_target')
-        
-        os.makedirs(os.path.join(REPO_ROOT, 'checkpoints'), exist_ok = True)
-        os.makedirs(policy_dir, exist_ok = True)
-        
-        os.makedirs(self._dir_actor, exist_ok = True)
-        os.makedirs(self._dir_actor_target, exist_ok = True)
-        os.makedirs(self._dir_critic, exist_ok = True)
-        os.makedirs(self._dir_critic_target, exist_ok = True)
+        self.dir_checkpoints = dir_checkpoints
+        if self.dir_checkpoints is None:
+            policy_dir = os.path.join(REPO_ROOT, 'checkpoints', self.name)
+            
+            self._dir_actor = os.path.join(policy_dir, 'actor')
+            self._dir_actor_target = os.path.join(policy_dir, 'actor_target')
+            self._dir_critic = os.path.join(policy_dir, 'critic')
+            self._dir_critic_target = os.path.join(policy_dir, 'critic_target')
+            
+            os.makedirs(os.path.join(REPO_ROOT, 'checkpoints'), exist_ok = True)
+            os.makedirs(policy_dir, exist_ok = True)
+            
+            os.makedirs(self._dir_actor, exist_ok = True)
+            os.makedirs(self._dir_actor_target, exist_ok = True)
+            os.makedirs(self._dir_critic, exist_ok = True)
+            os.makedirs(self._dir_critic_target, exist_ok = True)
+            
+            self.set_check_point()
+        else:
+            self._dir_actor = os.path.join(self.dir_checkpoints, 'actor')
+            self._dir_actor_target = os.path.join(self.dir_checkpoints, 'actor_target')
+            self._dir_critic = os.path.join(self.dir_checkpoints, 'critic')
+            self._dir_critic_target = os.path.join(self.dir_checkpoints, 'critic_target')
+            
+            self.set_check_point()
+            self.load()
                 
     # ----------------------------------------------------------------------------------------------------
     class TrainConfig():
@@ -170,7 +182,6 @@ class DDPG(Policy_Base):
         self.use_prioritized_rb = config.use_prioritized_rb
         
         self.save_model_interval = config.save_model_interval
-        self.set_check_point()
         
         total_steps = 0
         episode_steps = 0
@@ -192,8 +203,11 @@ class DDPG(Policy_Base):
 
         while n_epochs < config.max_epochs:
             
-            if n_epochs < config.n_warmup:
-                action = self.get_sample()                 
+            if self.dir_checkpoints is None:
+                if n_epochs < config.n_warmup:
+                    action = self.get_sample()                 
+                else:
+                    action = self.act(obs)
             else:
                 action = self.act(obs)
 
