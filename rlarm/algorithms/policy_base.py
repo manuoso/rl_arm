@@ -201,5 +201,5 @@ class Policy_Base():
         pass
     
     # ----------------------------------------------------------------------------------------------------
-    def evaluate(self, saved_model, episode_max_steps):
+    def evaluate(self, episode_max_steps, sigma):
         pass

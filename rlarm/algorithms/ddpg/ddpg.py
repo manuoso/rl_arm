@@ -322,7 +322,7 @@ class DDPG(Policy_Base):
         last_checkpoint_critic = tf.train.latest_checkpoint(self._dir_critic)
         last_checkpoint_critic_target = tf.train.latest_checkpoint(self._dir_critic_target)
 
-        if last_checkpoint_actor is None or last_checkpoint_actor_target is None or last_checkpoint_critic is None or last_checkpoint_critic_target is None:
+        if (last_checkpoint_actor is None) or (last_checkpoint_actor_target is None) or (last_checkpoint_critic is None) or (last_checkpoint_critic_target is None):
             raise TypeExcept("No checkpoint found")   
         else:
             self._checkpoint_actor.restore(last_checkpoint_actor)
@@ -331,17 +331,20 @@ class DDPG(Policy_Base):
             self._checkpoint_critic_target.restore(last_checkpoint_critic_target)
     
     # ----------------------------------------------------------------------------------------------------
-    def evaluate(self, episode_max_steps):
-        ep_done = False
+    def evaluate(self, episode_max_steps, sigma):
+        self.sigma = sigma  # 666 change this
+        
         step = 0
         episode_return = 0.0
         
         # Initial state
         obs = self.initialPose()
+        # obs = self.reset()
         
-        while not ep_done:
-            action = self.act(obs)
+        while True:
+            action = self.act(obs, True)
             # print("Action: ", action)
+            # print("Step: ", step)
             
             next_obs, reward, done = self.step(action)
             
@@ -352,7 +355,7 @@ class DDPG(Policy_Base):
                 
             # Episode can finish either by reaching terminal state or max episode steps
             if done or step == episode_max_steps:
-                ep_done = True  
+                break
                 
     # ----------------------------------------------------------------------------------------------------
     def _evaluate_policy(self, total_steps, test_episodes, episode_max_steps):        
