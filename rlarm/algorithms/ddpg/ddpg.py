@@ -331,13 +331,7 @@ class DDPG(Policy_Base):
             self._checkpoint_critic_target.restore(last_checkpoint_critic_target)
     
     # ----------------------------------------------------------------------------------------------------
-    def evaluate(self, saved_model, episode_max_steps):
-        # load ckpt 
-        self.load()
-        
-        # Configure env with a desired goal point
-        # TODO
-        
+    def evaluate(self, episode_max_steps):
         ep_done = False
         step = 0
         episode_return = 0.0

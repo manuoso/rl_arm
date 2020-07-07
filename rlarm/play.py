@@ -40,51 +40,6 @@ if __name__ == '__main__':
     env = calvopy.ArmiPy("Default")
     env.init(0.1, True)
     
-    kb = KBHit()
-    
-    x = 0
-    y = 3.0
-    z = 0
-    
-    while True:
-        if kb.kbhit():
-            c = kb.getch()
-            if c == 'q':
-                break
-
-            if c == 'e':
-                goal_point = {
-                                "x": x,
-                                "y": y,
-                                "z": z,
-                                }
-                env.changeGoalPoint(goal_point)
-            
-            if c == 'w':
-                z = z + 0.1
-            if c == 's':
-                z = z - 0.1
-                
-            if c == 'a':
-                x = x + 0.1
-            if c == 'd':
-                x = x - 0.1
-            
-            if c == 'z':
-                y = y + 0.1
-            if c == 'x':
-                y = y - 0.1
-        
-        converted_act = {
-                        "armJoint0": float(0.0),
-                        "armJoint1": float(0.0),
-                        "armJoint2": float(0.0),
-                        }
-        rec = env.step(converted_act)
-
-    kb.set_normal_term()
-    
- 
     ########## POLICY ##########
     # Create Policy
     # policy = DDPG(name = name, env = env, dir_checkpoints = "/home/aphrodite/programming/rl_arm/rlarm/checkpoints/DDPG-ArmiPy-13_25_9",
@@ -130,9 +85,53 @@ if __name__ == '__main__':
     # print('Loaded policy:', policy.__class__)
     # print('Train params:', train_params)
     # print('--------------------------------------------------\n')
+    
+    kb = KBHit()
+    
+    x = 0
+    y = 3.0
+    z = 0
+    
+    while True:
+        if kb.kbhit():
+            c = kb.getch()
+            if c == 'q':
+                break
 
-    # print('Start learning')
-    # policy.train(train_params)
+            if c == 'e':    # Show goal point
+                goal_point = {
+                                "x": x,
+                                "y": y,
+                                "z": z,
+                                }
+                env.changeGoalPoint(goal_point)
+                
+                converted_act = {
+                        "armJoint0": float(0.0),
+                        "armJoint1": float(0.0),
+                        "armJoint2": float(0.0),
+                        }
+                rec = env.step(converted_act)
+                
+            if c == 'r':    # Evaluate goal point
+                policy.evaluate()
+            
+            if c == 'w':
+                z = z + 0.1
+            if c == 's':
+                z = z - 0.1
+                
+            if c == 'a':
+                x = x + 0.1
+            if c == 'd':
+                x = x - 0.1
+            
+            if c == 'z':
+                y = y + 0.1
+            if c == 'x':
+                y = y - 0.1
+
+    kb.set_normal_term()
 
     # env.close()
     print('Play completed')
