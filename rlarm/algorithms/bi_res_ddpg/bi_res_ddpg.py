@@ -5,7 +5,7 @@ import tensorflow as tf
 
 from gym.utils import colorize
 
-from rlarm.algorithms.policy_base import Policy_Base
+from rlarm.algorithms.policy_base import Policy_Base, TypeExcept
 
 from rlarm.algorithms.ddpg.networks import ACTOR_DDPG, CRITIC_DDPG
 
@@ -19,7 +19,7 @@ tf.executing_eagerly()
 
 ####################################################################################################
 class BI_RES_DDPG(Policy_Base):
-    def __init__(self, name, env, deterministic = False, save_tensorboard = True, save_matplotlib = True, lr_actor = 0.001, lr_critic = 0.001, max_action = 1., gamma = 0.99, eta = 0.05, actor_layers = [400, 300], critic_layers = [400, 300]):        
+    def __init__(self, name, env, dir_checkpoints, deterministic = False, save_tensorboard = True, save_matplotlib = True, lr_actor = 0.001, lr_critic = 0.001, max_action = 1., gamma = 0.99, eta = 0.05, actor_layers = [400, 300], critic_layers = [400, 300]):        
         for gpu in tf.config.experimental.list_physical_devices('GPU'):
             tf.compat.v2.config.experimental.set_memory_growth(gpu, True)
             
@@ -49,7 +49,34 @@ class BI_RES_DDPG(Policy_Base):
         
         self.max_grad = 10.
         self.actor_optim = tf.keras.optimizers.Adam(learning_rate = lr_actor)
-        self.critic_optim = tf.keras.optimizers.Adam(learning_rate = lr_critic)                
+        self.critic_optim = tf.keras.optimizers.Adam(learning_rate = lr_critic)        
+        
+        self.dir_checkpoints = dir_checkpoints
+        if self.dir_checkpoints is None:
+            policy_dir = os.path.join(REPO_ROOT, 'checkpoints', self.name)
+            
+            self._dir_actor = os.path.join(policy_dir, 'actor')
+            self._dir_actor_target = os.path.join(policy_dir, 'actor_target')
+            self._dir_critic = os.path.join(policy_dir, 'critic')
+            self._dir_critic_target = os.path.join(policy_dir, 'critic_target')
+            
+            os.makedirs(os.path.join(REPO_ROOT, 'checkpoints'), exist_ok = True)
+            os.makedirs(policy_dir, exist_ok = True)
+            
+            os.makedirs(self._dir_actor, exist_ok = True)
+            os.makedirs(self._dir_actor_target, exist_ok = True)
+            os.makedirs(self._dir_critic, exist_ok = True)
+            os.makedirs(self._dir_critic_target, exist_ok = True)
+            
+            self.set_check_point()
+        else:
+            self._dir_actor = os.path.join(self.dir_checkpoints, 'actor')
+            self._dir_actor_target = os.path.join(self.dir_checkpoints, 'actor_target')
+            self._dir_critic = os.path.join(self.dir_checkpoints, 'critic')
+            self._dir_critic_target = os.path.join(self.dir_checkpoints, 'critic_target')
+            
+            self.set_check_point()
+            self.load()        
 
     # ----------------------------------------------------------------------------------------------------
     class TrainConfig():
@@ -61,6 +88,7 @@ class BI_RES_DDPG(Policy_Base):
             self.update_interval = 1
             self.test_interval = 1000
             self.test_episodes = 5
+            self.save_model_interval = 10000 # save checkpoints every X steps
             
             self.memory_capacity = int(1e6) # 1000000
             self.batch_size = 100
@@ -164,6 +192,8 @@ class BI_RES_DDPG(Policy_Base):
         self.batch_size = config.batch_size
         self.use_prioritized_rb = config.use_prioritized_rb
         
+        self.save_model_interval = config.save_model_interval
+        
         total_steps = 0
         episode_steps = 0
         episode_return = 0
@@ -253,6 +283,13 @@ class BI_RES_DDPG(Policy_Base):
                 #             tf.summary.scalar("average_test_return", avg_test_return, step=total_steps)
 
                 #         self.writer.flush()
+                
+            if total_steps % self.save_model_interval == 0:
+                self.checkpoint_manager_actor.save()
+            self.checkpoint_manager_actor_target.save()
+            
+            self.checkpoint_manager_critic.save()
+            self.checkpoint_manager_critic_target.save()
         
         print(colorize("[FINAL] Num steps: {}, Max reward: {}, Average reward: {}".format(
             total_steps, np.max(reward_history), np.mean(reward_history)), "magenta"))
@@ -266,7 +303,41 @@ class BI_RES_DDPG(Policy_Base):
                 'reward_smooth10': reward_averaged,
             }
             plot_learning_curve(self.name, data_dict, xlabel='episode')
+    
+    # ----------------------------------------------------------------------------------------------------
+    def set_check_point(self):
+        self._checkpoint_actor = tf.train.Checkpoint(net=self.actor_network)
+        self._checkpoint_actor_target = tf.train.Checkpoint(net=self.actor_target_network)
+        
+        self._checkpoint_critic = tf.train.Checkpoint(net=self.critic_network)
+        self._checkpoint_critic_target = tf.train.Checkpoint(net=self.critic_target_network)
 
+        self.checkpoint_manager_actor = tf.train.CheckpointManager(
+            self._checkpoint_actor, directory=self._dir_actor, max_to_keep=5)
+        self.checkpoint_manager_actor_target = tf.train.CheckpointManager(
+            self._checkpoint_actor_target, directory=self._dir_actor_target, max_to_keep=5)
+        
+        self.checkpoint_manager_critic = tf.train.CheckpointManager(
+            self._checkpoint_critic, directory=self._dir_critic, max_to_keep=5)
+        self.checkpoint_manager_critic_target = tf.train.CheckpointManager(
+            self._checkpoint_critic_target, directory=self._dir_critic_target, max_to_keep=5)
+    
+    # ----------------------------------------------------------------------------------------------------
+    def load(self):
+        last_checkpoint_actor = tf.train.latest_checkpoint(self._dir_actor)        
+        last_checkpoint_actor_target = tf.train.latest_checkpoint(self._dir_actor_target)
+        
+        last_checkpoint_critic = tf.train.latest_checkpoint(self._dir_critic)
+        last_checkpoint_critic_target = tf.train.latest_checkpoint(self._dir_critic_target)
+
+        if (last_checkpoint_actor is None) or (last_checkpoint_actor_target is None) or (last_checkpoint_critic is None) or (last_checkpoint_critic_target is None):
+            raise TypeExcept("No checkpoint found")   
+        else:
+            self._checkpoint_actor.restore(last_checkpoint_actor)
+            self._checkpoint_actor_target.restore(last_checkpoint_actor_target)
+            self._checkpoint_critic.restore(last_checkpoint_critic)
+            self._checkpoint_critic_target.restore(last_checkpoint_critic_target)
+    
     # ----------------------------------------------------------------------------------------------------
     def _evaluate_policy(self, total_steps, test_episodes, episode_max_steps):        
         avg_test_return = 0.
@@ -291,4 +362,4 @@ class BI_RES_DDPG(Policy_Base):
             avg_test_return += episode_return
 
         return avg_test_return / test_episodes
-        
+    

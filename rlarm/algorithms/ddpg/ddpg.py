@@ -88,6 +88,7 @@ class DDPG(Policy_Base):
             self.update_interval = 1
             self.test_interval = 10000
             self.test_episodes = 5
+            self.save_model_interval = 10000 # save checkpoints every X steps
             
             self.memory_capacity = int(1e6) # 1000000
             self.batch_size = 100
@@ -381,4 +382,3 @@ class DDPG(Policy_Base):
             avg_test_return += episode_return
 
         return avg_test_return / test_episodes
-        

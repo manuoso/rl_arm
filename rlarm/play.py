@@ -40,7 +40,7 @@ if __name__ == '__main__':
     
     ########## POLICY ##########
     # Create Policy
-    policy = DDPG(name = name, env = env, dir_checkpoints = "/home/aphrodite/programming/rl_arm/rlarm/checkpoints/DDPG-ArmiPy-12_40_50",
+    policy = DDPG(name = name, env = env, dir_checkpoints = "/home/aphrodite/programming/rl_arm/rlarm/checkpoints/DDPG-ArmiPy-18_18_29",
                   deterministic = deterministic, save_tensorboard = False, save_matplotlib = False, 
                   lr_actor = 0.001, lr_critic = 0.001, max_action = 1., gamma = 0.9, actor_layers = [400, 300], critic_layers = [400, 300])
     
