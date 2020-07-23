@@ -212,8 +212,8 @@ class BI_RES_DDPG(Policy_Base):
 
         obs = self.reset()
 
-        while total_steps < config.max_epochs:
-            
+        while n_epochs < config.max_epochs:
+    
             if n_epochs < config.n_warmup:
                 action = self.get_sample()                 
             else:

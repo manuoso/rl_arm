@@ -330,10 +330,12 @@ class SAC(Policy_Base):
                 
             if total_steps % self.save_model_interval == 0:
                 self.checkpoint_manager_actor.save()
-                self.checkpoint_manager_actor_target.save()
                 
-                self.checkpoint_manager_critic.save()
-                self.checkpoint_manager_critic_target.save()
+                self.checkpoint_manager_critic_vf.save()
+                self.checkpoint_manager_critic_vf_target.save()
+                
+                self.checkpoint_manager_critic_qf1.save()
+                self.checkpoint_manager_critic_qf2.save()
         
         print(colorize("[FINAL] Num steps: {}, Max reward: {}, Average reward: {}".format(
             total_steps, np.max(reward_history), np.mean(reward_history)), "magenta"))
