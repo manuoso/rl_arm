@@ -22,7 +22,7 @@ if __name__ == '__main__':
     
     ########## NAME ##########
     # Alg name
-    alg_name = "BIDDPG"
+    alg_name = "DDPG"
     
     # Env name
     # env_name = "PygletArm2D"
@@ -49,9 +49,9 @@ if __name__ == '__main__':
     
     train_params = policy.TrainConfig()    
     train_params.use_prioritized_rb = False
-    train_params.max_epochs = 2000
+    train_params.max_epochs = 1000
     train_params.episode_max_steps = 500
-    train_params.n_warmup = 500
+    train_params.n_warmup = 200
     train_params.update_interval = 1
     train_params.test_interval = 1000
     train_params.test_episodes = 5
