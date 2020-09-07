@@ -35,7 +35,14 @@ class Policy_Base():
 
             print(colorize("State dim: {}".format(self.state_dim), "yellow"))
             print(colorize("Act dim: {}".format(self.act_dim), "yellow"))
-            
+
+        elif self.env.name() == 'TarsysPy':
+            self.act_dim = 2
+            self.state_dim = (7,)
+
+            print(colorize("State dim: {}".format(self.state_dim), "yellow"))
+            print(colorize("Act dim: {}".format(self.act_dim), "yellow"))
+
         else:
             raise TypeExcept("Unrecognized Env!")   
             
@@ -76,6 +83,23 @@ class Policy_Base():
             ob_rec.append(goal) 
             
             ob = np.array(ob_rec)  
+
+        elif self.env.name() == 'TarsysPy':
+            rec = self.env.reset()
+            
+            ob_rec = []
+            ob_rec.append(rec["aPX"])
+            ob_rec.append(rec["aPY"])
+            ob_rec.append(rec["aPZ"])
+            
+            ob_rec.append(rec["distPX"])
+            ob_rec.append(rec["distPY"])
+            ob_rec.append(rec["distPZ"])      
+            
+            goal = 0.0
+            ob_rec.append(goal) 
+            
+            ob = np.array(ob_rec)  
             
         else:
             raise TypeExcept("Unrecognized Env!")   
@@ -111,6 +135,23 @@ class Policy_Base():
             ob_rec.append(goal) 
             
             ob = np.array(ob_rec)  
+
+        elif self.env.name() == 'TarsysPy':
+            rec = self.env.initialState()
+            
+            ob_rec = []
+            ob_rec.append(rec["aPX"])
+            ob_rec.append(rec["aPY"])
+            ob_rec.append(rec["aPZ"])
+            
+            ob_rec.append(rec["distPX"])
+            ob_rec.append(rec["distPY"])
+            ob_rec.append(rec["distPZ"])      
+            
+            goal = 0.0
+            ob_rec.append(goal) 
+            
+            ob = np.array(ob_rec) 
             
         else:
             raise TypeExcept("Unrecognized Env!")   
@@ -155,7 +196,31 @@ class Policy_Base():
             ob_next = np.array(ob_rec)
             r = rec["reward"]
             done = rec["done"]   
-             
+
+        elif self.env.name() == 'TarsysPy':
+            converted_act = {
+                             "armJoint0": float(action[0]),
+                             "armJoint1": float(action[1]),
+                             }
+   
+            rec = self.env.step(converted_act)
+            
+            ob_rec = []
+            ob_rec.append(rec["aPX"])
+            ob_rec.append(rec["aPY"])
+            ob_rec.append(rec["aPZ"])
+            
+            ob_rec.append(rec["distPX"])
+            ob_rec.append(rec["distPY"])
+            ob_rec.append(rec["distPZ"])   
+            
+            goal = rec["on_goal"]
+            ob_rec.append(1. if goal else 0.)
+            
+            ob_next = np.array(ob_rec)
+            r = rec["reward"]
+            done = rec["done"]  
+
         else:
             raise TypeExcept("Unrecognized Env!")   
         
@@ -173,6 +238,14 @@ class Policy_Base():
             random_acts.append(rec["armJoint0"])
             random_acts.append(rec["armJoint1"])
             random_acts.append(rec["armJoint2"])  
+            acts = np.array(random_acts)
+
+        elif self.env.name() == 'TarsysPy':
+            random_acts = []        
+            rec = self.env.sample()
+            
+            random_acts.append(rec["armJoint0"])
+            random_acts.append(rec["armJoint1"])
             acts = np.array(random_acts)
             
         else:

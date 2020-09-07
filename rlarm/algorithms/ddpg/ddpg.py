@@ -238,7 +238,9 @@ class DDPG(Policy_Base):
                 
                 if self.save_tensorboard:
                     with self.writer.as_default():
-                        tf.summary.scalar("training_return", episode_return, step=total_steps)
+                        tf.summary.scalar("return", episode_return, step=total_steps)
+                        if n_epochs > config.n_warmup and self.dir_checkpoints is None:
+                            tf.summary.scalar("training_return", episode_return, step=total_steps-config.n_warmup)
 
                     self.writer.flush()
                     

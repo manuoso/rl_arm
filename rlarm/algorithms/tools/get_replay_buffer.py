@@ -1,6 +1,6 @@
 import numpy as np
 
-from cpprb.experimental import ReplayBuffer, PrioritizedReplayBuffer
+from cpprb import ReplayBuffer, PrioritizedReplayBuffer
 
 
 # ----------------------------------------------------------------------------------------------------
