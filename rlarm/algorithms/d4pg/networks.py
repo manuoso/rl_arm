@@ -4,8 +4,6 @@ import numpy as np
 import gym
 from gym.utils import colorize
 
-from rlarm.algorithms.d4pg.l2_projection import _l2_project
-
 
 ####################################################################################################
 class ACTOR_NET(tf.keras.Model):
@@ -114,90 +112,32 @@ class CRITIC_NET(tf.keras.Model):
         self.z_atoms = tf.linspace(v_min, v_max, num_atoms)
 
     def call(self, s, a, give_grads):
-        x = s
-        x = self.layers_d1[0](x)
-
-        d2_1 = self.layers_d2[0](x)
-        d2_2 = self.layers_d2[1](a)
-
-        d2 = self.relu_layers[0](d2_1 + d2_2)
-
-        output_logits = self.output_layers[0](d2)
-        output_probs = tf.nn.softmax(output_logits)
-        
         if give_grads:
-            # TODO: NOT WORKING!!!
             with tf.GradientTape() as tape:        
-                tape.watch(output_probs)
-                # tape.watch(a)
-            action_grads = tape.gradient(output_probs, a, self.z_atoms)  
-            # action_grads = tf.gradients(output_probs, a, self.z_atoms) # gradient of mean of output Z-distribution wrt action input - used to train actor network, weighing the grads by z_values gives the mean across the output distribution
-                
+                x = s
+                x = self.layers_d1[0](x)
+
+                d2_1 = self.layers_d2[0](x)
+                d2_2 = self.layers_d2[1](a)
+
+                d2 = self.relu_layers[0](d2_1 + d2_2)
+
+                output_logits = self.output_layers[0](d2)
+                output_probs = tf.nn.softmax(output_logits)
+
+            action_grads = tape.gradient(output_probs, a, self.z_atoms) # gradient of mean of output Z-distribution wrt action input - used to train actor network, weighing the grads by z_values gives the mean across the output distribution
+            
             return output_logits, output_probs, action_grads
         else:
+            x = s
+            x = self.layers_d1[0](x)
+
+            d2_1 = self.layers_d2[0](x)
+            d2_2 = self.layers_d2[1](a)
+
+            d2 = self.relu_layers[0](d2_1 + d2_2)
+
+            output_logits = self.output_layers[0](d2)
+            output_probs = tf.nn.softmax(output_logits)
+
             return output_logits, output_probs, None
-
-####################################################################################################
-class ACTOR_TRAINER():
-    def __init__(self, initLr, batch_size):
-        self.lr = tf.Variable(initLr)
-        self.batch_size = batch_size
-
-        self.optim_a = tf.keras.optimizers.Adam(learning_rate = self.lr)
-
-    def __loss(self, output):
-        loss_a = output
-        return loss_a
-
-    # @tf.function
-    def __grad(self, model, state, action_grads):
-        with tf.GradientTape() as tape:
-            output = model(state)
-
-            loss_value = self.__loss(output)
-        return loss_value, tape.gradient(loss_value, model.trainable_variables, -action_grads)        
-
-    def updateLr(self, lr):
-        self.lr.assign(lr)
-
-    def train_step(self, model, state, action_grads):
-        loss, grads = self.__grad(model, state, action_grads)
-        grads_scaled = list(map(lambda x: tf.divide(x, self.batch_size), grads)) # tf.gradients sums over the batch dimension here, must therefore divide by batch_size to get mean gradients
-
-        self.optim_a.apply_gradients(zip(grads_scaled, model.trainable_variables))
-        return loss
-
-####################################################################################################
-class CRITIC_TRAINER():
-    def __init__(self, initLr, l2_lambda):
-        self.lr = tf.Variable(initLr)
-        
-        self.optim_c = tf.keras.optimizers.Adam(learning_rate = self.lr)
-
-    def __loss(self, output_logits, target_Z_projected):
-        loss_c = tf.nn.softmax_cross_entropy_with_logits(logits=output_logits, labels=tf.stop_gradient(target_Z_projected))
-        return loss_c
-
-    # @tf.function
-    def __grad(self, model, state, action, target_Z_dist, target_Z_atoms, IS_weights, l2_lambda):
-        with tf.GradientTape() as tape:
-            output_logits, _, _ = model(state, action, False)            
-            target_Z_projected = _l2_project(target_Z_atoms, target_Z_dist, model.z_atoms)  
-            
-            loss_value = self.__loss(output_logits, target_Z_projected)
-            weighted_loss = loss_value * IS_weights
-            mean_loss = tf.reduce_mean(weighted_loss)
-            l2_reg_loss = tf.add_n([tf.nn.l2_loss(v) for v in model.trainable_variables if 'kernel' in v.name]) * l2_lambda
-            total_loss = mean_loss + l2_reg_loss
-
-        return loss_value, total_loss, tape.gradient(total_loss, model.trainable_variables)        
-
-    def updateLr(self, lr):
-        self.lr.assign(lr)
-
-    def train_step(self, model, state, action, target_Z_dist, target_Z_atoms, IS_weights, l2_lambda): 
-        loss_value, total_loss, grads = self.__grad(model, state, action, target_Z_dist, target_Z_atoms, IS_weights, l2_lambda)
-
-        self.optim_c.apply_gradients(zip(grads, model.trainable_variables))
-        return loss_value, total_loss
-

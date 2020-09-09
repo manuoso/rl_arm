@@ -7,18 +7,19 @@ from gym.utils import colorize
 
 from rlarm.algorithms.policy_base import Policy_Base, TypeExcept
 
-from rlarm.algorithms.d4pg.networks import ACTOR_NET, CRITIC_NET, ACTOR_TRAINER, CRITIC_TRAINER
+from rlarm.algorithms.d4pg.networks import ACTOR_NET, CRITIC_NET
 
 from collections import deque
 from rlarm.algorithms.d4pg.prioritised_experience_replay import PrioritizedReplayBuffer
 from rlarm.algorithms.d4pg.gaussian_noise import GaussianNoiseGenerator
+from rlarm.algorithms.d4pg.l2_projection import _l2_project
 
 from rlarm.algorithms.tools.utils import plot_learning_curve, REPO_ROOT
 
 
 ####################################################################################################
 class D4PG(Policy_Base):
-    def __init__(self, name, env, dir_checkpoints, save_tensorboard = True, save_matplotlib = True, deterministic = False, layers_units = [400, 300]):
+    def __init__(self, name, env, dir_checkpoints, save_tensorboard = True, save_matplotlib = True, deterministic = False, lr_actor = 0.0001, lr_critic = 0.001, layers_units = [400, 300]):
         for gpu in tf.config.experimental.list_physical_devices('GPU'):
             tf.compat.v2.config.experimental.set_memory_growth(gpu, True)
             
@@ -33,9 +34,8 @@ class D4PG(Policy_Base):
         self.critic_network = CRITIC_NET(self.state_dim, self.act_dim, layers_units = layers_units + [51])    
         self.target_critic_network = CRITIC_NET(self.state_dim, self.act_dim, layers_units = layers_units + [51])            
         
-        # TODO 666: MAKE TO CHANGE THIS PARAMS
-        self.actor_train = ACTOR_TRAINER(initLr = 0.0001, batch_size = 256)
-        self.critic_train = CRITIC_TRAINER(initLr = 0.0001, l2_lambda = 0.0)
+        self.optim_a = tf.keras.optimizers.Adam(learning_rate = lr_actor)
+        self.optim_c = tf.keras.optimizers.Adam(learning_rate = lr_critic)
         
         self.init_target_net()
         
@@ -69,8 +69,6 @@ class D4PG(Policy_Base):
     # ----------------------------------------------------------------------------------------------------
     class TrainConfig():
         def __init__(self):
-            self.lr_a = 0.0001
-            self.lr_c = 0.0001
             self.critic_l2_lambda = 0.0     # Coefficient for L2 weight regularisation in critic - if 0, no regularisation is performed
             
             self.n_episodes = 1000
@@ -92,6 +90,63 @@ class D4PG(Policy_Base):
     
         def __str__(self):
             return str(self.__class__) + " : " + str(self.__dict__)
+
+    # ----------------------------------------------------------------------------------------------------
+    ####################################################################################################
+    # ----------------------------------------------------------------------------------------------------      
+      
+    # @tf.function
+    def train_step(self, batch_size, states, actions, next_states, rewards, terminals, weights, gamma, l2_lambda):
+        with tf.GradientTape() as g:
+            # Critic training step   
+            # Predict actions for next states by passing next states through policy target network
+            next_states = tf.reshape(next_states, (batch_size, self.state_dim[0]))
+            future_action = self.actor_network(next_states)
+
+            # Predict future Z distribution by passing next states and actions through value target network, also get target network's Z-atom values
+            _, target_Z_dist, _ = self.critic_network(next_states, future_action, False)
+            target_Z_atoms = self.critic_network.z_atoms
+
+            # Create batch of target network's Z-atoms
+            target_Z_atoms = np.repeat(np.expand_dims(target_Z_atoms, axis=0), batch_size, axis=0)
+            # Value of terminal states is 0 by definition
+            target_Z_atoms[terminals, :] = 0.0
+            # Apply Bellman update to each atom
+            target_Z_atoms = np.expand_dims(rewards, axis=1) + (target_Z_atoms*np.expand_dims(gamma, axis=1))
+
+            output_logits, _, _ = self.critic_network(states, actions, False)            
+            target_Z_projected = _l2_project(np.float32(target_Z_atoms), target_Z_dist, self.critic_network.z_atoms)  
+            
+            loss_c = tf.nn.softmax_cross_entropy_with_logits(logits=output_logits, labels=tf.stop_gradient(target_Z_projected))
+
+            weighted_loss = loss_c * np.float32(weights)
+            mean_loss = tf.reduce_mean(weighted_loss)
+            l2_reg_loss = tf.add_n([tf.nn.l2_loss(v) for v in self.critic_network.trainable_variables if 'kernel' in v.name]) * l2_lambda
+            total_loss = mean_loss + l2_reg_loss
+
+        critic_grads = g.gradient(total_loss, self.critic_network.trainable_variables)
+        self.optim_c.apply_gradients(zip(critic_grads, self.critic_network.trainable_variables))
+
+        with tf.GradientTape() as gg:
+            # Actor training step
+            # Get policy network's action outputs for selected states
+            states = tf.reshape(states, (batch_size, self.state_dim[0]))
+            actions_a = self.actor_network(states)
+            
+            # Compute gradients of critic's value output distribution wrt actions
+            _, _, action_grads =  self.critic_network(states, actions_a, True)
+
+            loss_a = self.actor_network(states)
+
+        actor_grads = gg.gradient(loss_a, self.actor_network.trainable_variables, -action_grads)  
+        grads_scaled = list(map(lambda x: tf.divide(x, batch_size), actor_grads)) # tf.gradients sums over the batch dimension here, must therefore divide by batch_size to get mean gradientss
+        self.optim_a.apply_gradients(zip(grads_scaled, self.actor_network.trainable_variables))
+
+        return loss_c
+
+    # ----------------------------------------------------------------------------------------------------
+    ####################################################################################################
+    # ---------------------------------------------------------------------------------------------------- 
 
     # ----------------------------------------------------------------------------------------------------
     def act(self, state, noise_generator, n_eps, decay = 0.9999):
@@ -121,10 +176,7 @@ class D4PG(Policy_Base):
             q_t_v.assign(((1.0 - tau) * q_t_v) + (tau * q_v))
 
     # ----------------------------------------------------------------------------------------------------
-    def fit_net(self, lr_c, lr_a, tau, memory, batch_size, priority_beta, priority_eps, l2_lambda):
-        # self.actor_train.updateLr(lr_a)
-        # self.critic_train.updateLr(lr_c)
-        
+    def fit_net(self, tau, memory, batch_size, priority_beta, priority_eps, l2_lambda):
         batch = memory.sample(batch_size, priority_beta)  
         states_batch = batch[0]
         actions_batch = batch[1]
@@ -135,45 +187,22 @@ class D4PG(Policy_Base):
         weights_batch = batch[6]
         idx_batch = batch[7]         
 
-        # - # - # - # - # - # - # - # - # - #         
-        # Critic training step   
-        # Predict actions for next states by passing next states through policy target network
-        next_states = tf.reshape(next_states_batch, (batch_size, self.state_dim[0]))
-        future_action = self.actor_network(next_states)
-        
-        # Predict future Z distribution by passing next states and actions through value target network, also get target network's Z-atom values
-        _, target_Z_dist, _ = self.critic_network(next_states, future_action, False)
-        target_Z_atoms = self.critic_network.z_atoms
-        
-        # Create batch of target network's Z-atoms
-        target_Z_atoms = np.repeat(np.expand_dims(target_Z_atoms, axis=0), batch_size, axis=0)
-        # Value of terminal states is 0 by definition
-        target_Z_atoms[terminals_batch, :] = 0.0
-        # Apply Bellman update to each atom
-        target_Z_atoms = np.expand_dims(rewards_batch, axis=1) + (target_Z_atoms*np.expand_dims(gammas_batch, axis=1))
-        
-        # Train critic
-        TD_error, _ = self.critic_train.train_step(self.critic_network, np.float32(states_batch), actions_batch, target_Z_dist, np.float32(target_Z_atoms), np.float32(weights_batch), l2_lambda)
-        
+        TD_error = self.train_step(batch_size, 
+                                    states_batch, 
+                                    actions_batch, 
+                                    next_states_batch, 
+                                    rewards_batch, 
+                                    terminals_batch, 
+                                    weights_batch, 
+                                    gammas_batch, 
+                                    l2_lambda)
+
         # Use critic TD errors to update sample priorities
         memory.update_priorities(idx_batch, (np.abs(TD_error)+priority_eps))
-          
-        # - # - # - # - # - # - # - # - # - #         
-        # Actor training step
-        # Get policy network's action outputs for selected states
-        states = tf.reshape(states_batch, (batch_size, self.state_dim[0]))
-        actions = self.actor_network(states)
-        
-        # Compute gradients of critic's value output distribution wrt actions
-        _, _, action_grads =  self.critic_network(states, actions, True)
-        
-        # Train actor        
-        self.actor_train.train_step(self.actor_network, states, action_grads)
-        
-        # - # - # - # - # - # - # - # - # - # 
+
         # Update target networks
-        self.update_target_net(tau)         
-    
+        self.update_target_net(tau)  
+              
     # ----------------------------------------------------------------------------------------------------
     def train(self, config: TrainConfig):        
         replay_mem_size = 1000000 # Soft maximum capacity of replay memory
@@ -188,9 +217,6 @@ class D4PG(Policy_Base):
         reward_averaged = []
 
         n_all_steps = 0
-
-        lr_c = config.lr_c
-        lr_a = config.lr_a
         
         self.save_model_interval = config.save_model_interval
         
@@ -235,7 +261,7 @@ class D4PG(Policy_Base):
                 priority_beta += beta_increment
 
                 if len(prior_rep_buffer) >= config.batch_size:
-                    self.fit_net(lr_c, lr_a, config.tau, prior_rep_buffer, config.batch_size, priority_beta, config.priority_eps, config.critic_l2_lambda)
+                    self.fit_net(config.tau, prior_rep_buffer, config.batch_size, priority_beta, config.priority_eps, config.critic_l2_lambda)
                     
             # One trajectory/Episode is complete!
             reward_history.append(episode_reward)
@@ -245,16 +271,15 @@ class D4PG(Policy_Base):
                 with self.writer.as_default():
                     tf.summary.scalar("reward_history", episode_reward, step=n_episode)
                     tf.summary.scalar("reward_averaged", reward_averaged[n_episode], step=n_episode)
-                    tf.summary.scalar("lr_c", lr_c, step=n_episode)
-                    tf.summary.scalar("lr_a", lr_a, step=n_episode)
+                    if n_epochs > config.n_warmup and self.dir_checkpoints is None:
+                        tf.summary.scalar("training_reward", episode_reward, step=total_steps-config.n_warmup)
 
                     self.writer.flush()
 
             if (reward_history and config.log_every_episode and n_episode % config.log_every_episode == 0):
-                print(colorize("[episodes:{}/steps:{}], best:{}, avg:{:.2f}:{}, lr:{:.4f}|{:.4f}".format(
+                print(colorize("[episodes:{}/steps:{}], best:{}, avg:{:.2f}:{}".format(
                         n_episode, n_all_steps, np.max(reward_history),
-                        np.mean(reward_history[-10:]), reward_history[-5:],
-                        lr_a, lr_c),
+                        np.mean(reward_history[-10:]), reward_history[-5:]),
                         "blue"))
                 
             if n_all_steps % self.save_model_interval == 0:

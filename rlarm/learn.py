@@ -17,12 +17,12 @@ if __name__ == '__main__':
     # Variables for Debug
     save_file_train_params = False
     deterministic = True
-    save_tensorboard = True
+    save_tensorboard = False
     save_matplotlib = True
     
     ########## NAME ##########
     # Alg name
-    alg_name = "DDPG"
+    alg_name = "D4PG"
     
     # Env name
     # env_name = "PygletArm2D"
@@ -38,28 +38,28 @@ if __name__ == '__main__':
     # env.render()    # Need two render before begin
     # env.render()
     
-    env = calvopy.TarsysPy("Default")
+    env = calvopy.TarsysPy()
     env.init(0.1, True)
  
     ########## POLICY ##########
     # Create Policy
-    policy = DDPG(name = name, env = env, dir_checkpoints = None,
-                  deterministic = deterministic, save_tensorboard = save_tensorboard, save_matplotlib = save_matplotlib, 
-                  lr_actor = 0.001, lr_critic = 0.001, max_action = 1., gamma = 0.9, actor_layers = [400, 300], critic_layers = [400, 300])
+    # policy = DDPG(name = name, env = env, dir_checkpoints = None,
+    #               deterministic = deterministic, save_tensorboard = save_tensorboard, save_matplotlib = save_matplotlib, 
+    #               lr_actor = 0.001, lr_critic = 0.001, max_action = 1., gamma = 0.9, actor_layers = [400, 300], critic_layers = [400, 300])
     
-    train_params = policy.TrainConfig()    
-    train_params.use_prioritized_rb = True
-    train_params.max_epochs = 500
-    train_params.episode_max_steps = 200
-    train_params.n_warmup = 100
-    train_params.update_interval = 1
-    train_params.test_interval = 1000
-    train_params.test_episodes = 5
+    # train_params = policy.TrainConfig()    
+    # train_params.use_prioritized_rb = True
+    # train_params.max_epochs = 500
+    # train_params.episode_max_steps = 200
+    # train_params.n_warmup = 100
+    # train_params.update_interval = 1
+    # train_params.test_interval = 1000
+    # train_params.test_episodes = 5
     
-    train_params.memory_capacity = 1000000 # 1000000
-    train_params.batch_size = 64
-    train_params.sigma = 0.1
-    train_params.tau = 0.01
+    # train_params.memory_capacity = 1000000 # 1000000
+    # train_params.batch_size = 64
+    # train_params.sigma = 0.1
+    # train_params.tau = 0.01
     
     # train_params.save_model_interval = 10000 # save checkpoints every X steps
     
@@ -68,54 +68,53 @@ if __name__ == '__main__':
     #                      lr_actor = 0.001, lr_critic = 0.001, gamma = 0.99, eta = 0.05, actor_layers = [400, 300], critic_layers = [400, 300])
     
     # train_params = policy.TrainConfig()    
-    # train_params.use_prioritized_rb = False
-    # train_params.max_epochs = 1000
-    # train_params.episode_max_steps = 500
-    # train_params.n_warmup = 300
+    # train_params.use_prioritized_rb = True
+    # train_params.max_epochs = 500
+    # train_params.episode_max_steps = 200
+    # train_params.n_warmup = 100
     # train_params.update_interval = 1
     # train_params.test_interval = 1000
     # train_params.test_episodes = 5
     
-    # train_params.memory_capacity = 30000 # 1000000
+    # train_params.memory_capacity = 1000000 # 1000000
     # train_params.batch_size = 64
     # train_params.sigma = 0.1
     # train_params.tau = 0.01
     
     # train_params.save_model_interval = 10000 # save checkpoints every X steps
     
-    # -------------------- NOT WORKING D4PG --------------------
-    # policy = D4PG(name = name, env = env, dir_checkpoints = None,
-    #               deterministic = deterministic, save_tensorboard = save_tensorboard, save_matplotlib = save_matplotlib, 
-    #               layers_units = [400, 300])
+    policy = D4PG(name = name, env = env, dir_checkpoints = None,
+                  deterministic = deterministic, save_tensorboard = save_tensorboard, save_matplotlib = save_matplotlib, 
+                  layers_units = [400, 300])
     
-    # train_params = policy.TrainConfig()
-    # train_params.lr_a = 0.0001
-    # train_params.lr_c = 0.0001
-    # train_params.critic_l2_lambda = 0.0    
+    train_params = policy.TrainConfig()
+    train_params.lr_a = 0.0001
+    train_params.lr_c = 0.0001
+    train_params.critic_l2_lambda = 0.0    
     
-    # train_params.n_episodes = 1000
-    # train_params.batch_size = 64
-    # train_params.log_every_episode = 10
-    # train_params.save_model_interval = 10000 # save checkpoints every X steps
+    train_params.n_episodes = 500
+    train_params.batch_size = 64
+    train_params.log_every_episode = 10
+    train_params.save_model_interval = 10000 # save checkpoints every X steps
     
-    # train_params.priority_alpha = 0.6       
-    # train_params.priority_beta_start = 0.4   
-    # train_params.priority_beta_end = 1.0     
-    # train_params.priority_eps = 0.00001     
-    # train_params.noise_scale = 0.3          
-    # train_params.discount_rate = 0.99       
-    # train_params.n_step_returns = 5         
-    # train_params.tau = 0.001
+    train_params.priority_alpha = 0.6       
+    train_params.priority_beta_start = 0.4   
+    train_params.priority_beta_end = 1.0     
+    train_params.priority_eps = 0.00001     
+    train_params.noise_scale = 0.3          
+    train_params.discount_rate = 0.99       
+    train_params.n_step_returns = 5         
+    train_params.tau = 0.001
     
     # policy = SAC(name = name, env = env, dir_checkpoints = None, 
     #              deterministic = deterministic, save_tensorboard = save_tensorboard, save_matplotlib = save_matplotlib, 
     #              lr = 3e-4, max_action = 1., discount = 0.99, alpha = .2, auto_alpha = False, actor_layers = [400, 300], critic_layers = [400, 300])
     
     # train_params = policy.TrainConfig()    
-    # train_params.use_prioritized_rb = False
-    # train_params.max_epochs = 2000
-    # train_params.episode_max_steps = 500
-    # train_params.n_warmup = 500
+    # train_params.use_prioritized_rb = True
+    # train_params.max_epochs = 500
+    # train_params.episode_max_steps = 200
+    # train_params.n_warmup = 100
     # train_params.update_interval = 1
     # train_params.test_interval = 1000
     # train_params.test_episodes = 5
