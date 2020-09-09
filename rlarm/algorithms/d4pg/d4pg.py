@@ -138,7 +138,7 @@ class D4PG(Policy_Base):
 
             loss_a = self.actor_network(states)
 
-        actor_grads = gg.gradient(loss_a, self.actor_network.trainable_variables, -action_grads)  
+        actor_grads = gg.gradient(loss_a, self.actor_network.trainable_variables, -action_grads[0])  
         grads_scaled = list(map(lambda x: tf.divide(x, batch_size), actor_grads)) # tf.gradients sums over the batch dimension here, must therefore divide by batch_size to get mean gradientss
         self.optim_a.apply_gradients(zip(grads_scaled, self.actor_network.trainable_variables))
 
