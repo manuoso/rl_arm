@@ -257,12 +257,12 @@ class D4PG(Policy_Base):
                 
                 ob = ob_next
                 
+                if len(prior_rep_buffer) >= config.batch_size:
+                    self.fit_net(config.tau, prior_rep_buffer, config.batch_size, priority_beta, config.priority_eps, config.critic_l2_lambda)
+                
                 # Increment beta value at end of every step   
                 priority_beta += beta_increment
 
-                if len(prior_rep_buffer) >= config.batch_size:
-                    self.fit_net(config.tau, prior_rep_buffer, config.batch_size, priority_beta, config.priority_eps, config.critic_l2_lambda)
-                    
             # One trajectory/Episode is complete!
             reward_history.append(episode_reward)
             reward_averaged.append(np.mean(reward_history[-10:]))
