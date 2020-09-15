@@ -125,6 +125,7 @@ class CRITIC_NET(tf.keras.Model):
                 output_logits = self.output_layers[0](d2)
                 output_probs = tf.nn.softmax(output_logits)
 
+            # TODO: ACTION GRADS RETURN NONE
             action_grads = tape.gradient(output_probs, a, self.z_atoms) # gradient of mean of output Z-distribution wrt action input - used to train actor network, weighing the grads by z_values gives the mean across the output distribution
             
             return output_logits, output_probs, action_grads

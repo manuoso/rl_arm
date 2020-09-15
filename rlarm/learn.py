@@ -40,7 +40,7 @@ if __name__ == '__main__':
     
     env = calvopy.TarsysPy()
     env.init(0.1, True)
- 
+
     ########## POLICY ##########
     # Create Policy
     # policy = DDPG(name = name, env = env, dir_checkpoints = None,
@@ -88,8 +88,6 @@ if __name__ == '__main__':
                   layers_units = [400, 300])
     
     train_params = policy.TrainConfig()
-    train_params.lr_a = 0.0001
-    train_params.lr_c = 0.0001
     train_params.critic_l2_lambda = 0.0    
     
     train_params.n_episodes = 500
