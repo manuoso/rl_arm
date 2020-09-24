@@ -19,8 +19,8 @@ class Policy_Base():
         self.save_matplotlib = save_matplotlib
         
         if deterministic:
-            np.random.seed(1)
-            tf.random.set_seed(1)
+            np.random.seed(999999)
+            tf.random.set_seed(999999)
         
         if self.env.name() == "PygletArm2D":
             self.act_dim = 2

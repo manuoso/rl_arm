@@ -45,7 +45,7 @@ if __name__ == '__main__':
     # Create Policy
     policy = DDPG(name = name, env = env, dir_checkpoints = None,
                   deterministic = deterministic, save_tensorboard = save_tensorboard, save_matplotlib = save_matplotlib, 
-                  lr_actor = 0.001, lr_critic = 0.001, max_action = 1., gamma = 0.9, actor_layers = [400, 300], critic_layers = [400, 300])
+                  lr_actor = 0.0001, lr_critic = 0.0001, max_action = 1., gamma = 0.9, actor_layers = [400, 300], critic_layers = [400, 300])
     
     train_params = policy.TrainConfig()    
     train_params.use_prioritized_rb = True
@@ -57,7 +57,7 @@ if __name__ == '__main__':
     train_params.test_episodes = 5
     
     train_params.memory_capacity = 1000000 # 1000000
-    train_params.batch_size = 64
+    train_params.batch_size = 256
     train_params.sigma = 0.1
     train_params.tau = 0.01
     
