@@ -17,6 +17,8 @@ from rlarm.algorithms.d4pg.l2_projection import _l2_project
 from rlarm.algorithms.tools.utils import plot_learning_curve, REPO_ROOT
 
 
+tf.executing_eagerly()
+
 ####################################################################################################
 class D4PG(Policy_Base):
     def __init__(self, name, env, dir_checkpoints, save_tensorboard = True, save_matplotlib = True, deterministic = False, lr_actor = 0.0001, lr_critic = 0.001, layers_units = [400, 300]):
